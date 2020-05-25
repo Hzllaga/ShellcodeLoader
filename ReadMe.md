@@ -32,6 +32,10 @@ VirusTotal(12/72)：
 
 ![圖片](https://user-images.githubusercontent.com/40329078/82827419-943bd200-9ee1-11ea-88e5-18b03ae53701.png)
 
+Hybrid Analysis(35/100)：
+
+![圖片](https://user-images.githubusercontent.com/40329078/82829543-1928ea80-9ee6-11ea-8a66-bcfa2e6cdc3e.png)
+
 程序：
 
 ![圖片](https://user-images.githubusercontent.com/40329078/82827492-bdf4f900-9ee1-11ea-9f9f-fc4b047f03b5.png)
