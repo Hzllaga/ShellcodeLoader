@@ -32,7 +32,21 @@ Argument：
 
 程序会保存加密好的数据到Output.txt
 
-shellcode.exe "私钥" "加密数据"
+shellcode.exe "私钥" "加密shellcode"
+
+---
+
+## 更新
+
+20200709:
+
+* 新增x86远程注入(直接复制CACTUSTORCH的)
+
+---
+
+#### 已知问题
+
+* 远程注入动态编译在win2008运行失败，请复制程序目录下code.txt 到vs编译就可以运行了。
 
 ---
 ## 截图
@@ -53,7 +67,7 @@ Hybrid Analysis(35/100)：
 
 程序：
 
-![圖片](https://user-images.githubusercontent.com/40329078/82919051-1bec1400-9fa8-11ea-8855-e82f38e23489.png)
+![圖片](https://user-images.githubusercontent.com/40329078/87024802-2b4bb780-c20c-11ea-9353-dfeabd7400c2.png)
 
 ---
 ## 参考
@@ -61,3 +75,5 @@ Hybrid Analysis(35/100)：
 [.NET for C# - RSA分段加解密](https://blog.xuite.net/ianan222/wretch/111888771-.NET+for+C%23+-+RSA%E5%88%86%E6%AE%B5%E5%8A%A0%E8%A7%A3%E5%AF%86)
 
 [GhostShell](https://github.com/ReddyyZ/GhostShell)
+
+[CACTUSTORCH](https://github.com/mdsecactivebreach/CACTUSTORCH/blob/master/CACTUSTORCH.cs/TestClass.cs)

